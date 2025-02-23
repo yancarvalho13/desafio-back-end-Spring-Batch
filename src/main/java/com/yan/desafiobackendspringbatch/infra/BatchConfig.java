@@ -12,14 +12,17 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.transform.Range;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.sql.DataSource;
 
 @Configuration
 public class BatchConfig {
@@ -56,13 +59,16 @@ public class BatchConfig {
                 .name("reader")
                 .resource(new FileSystemResource("/home/yanonjava/IdeaProjects/DesafioBackEnd-SpringBatch/CNAB.txt"))
                 .fixedLength()
-                .columns(new Range(1,1), new Range(2,9), new Range(10,19), new Range(20,30)
-                , new Range(31,42), new Range(43, 48), new Range(49,62), new Range(63,81))
-                .names("tipo","data","cpf","cartao","hora","donoDaLoja","nomeDaLoja")
+                .columns(new Range(1,1), new Range(2,9),
+                        new Range(10,19), new Range(20,30),
+                        new Range(31,42), new Range(43, 48),
+                        new Range(49,62), new Range(63,80))
+                .names("tipo","data","valor","cpf","cartao","hora","donoDaLoja","nomeDaLoja")
                 .targetType(InputDTO.class)
                 .build();
     }
 
+    @Bean
     public ItemProcessor<InputDTO,OutputDTO> processor(){
         return item -> {
             return new OutputDTO(null,
@@ -72,4 +78,20 @@ public class BatchConfig {
                     .withHora(item.hora());
         };
     }
+
+    @Bean
+    public JdbcBatchItemWriter<OutputDTO> writer(DataSource dataSource){
+        return new JdbcBatchItemWriterBuilder<OutputDTO>()
+                .dataSource(dataSource)
+                .sql("""
+                        INSERT INTO transacao(
+                        tipo,data,valor,cpf,cartao,hora,dono_da_loja,nome_da_loja
+                        )VALUES(
+                            :tipo, :data, :valor, :cpf, :cartao, :hora, :donoDaLoja, :nomeDaLoja
+                        )
+                        """)
+                .beanMapped()
+                .build();
+    }
+
 }
